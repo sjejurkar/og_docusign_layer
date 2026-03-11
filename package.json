@@ -1,0 +1,48 @@
+{
+  "name": "docusign-integration-layer",
+  "version": "1.0.0",
+  "description": "DocuSign Integration Layer for document signing workflows",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --coverage",
+    "test:watch": "jest --watch",
+    "migrate": "node src/db/migrate.js"
+  },
+  "keywords": [
+    "docusign",
+    "esignature",
+    "integration",
+    "webhook"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.99.1",
+    "axios": "^1.6.2",
+    "better-sqlite3": "^9.2.2",
+    "docusign-esign": "^6.3.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-rate-limit": "^7.1.5",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^6.9.7",
+    "pg": "^8.11.3",
+    "pino": "^8.17.0",
+    "pino-http": "^8.6.0",
+    "uuid": "^9.0.1",
+    "xml2js": "^0.6.2",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nock": "^13.4.0",
+    "nodemon": "^3.0.2",
+    "supertest": "^6.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

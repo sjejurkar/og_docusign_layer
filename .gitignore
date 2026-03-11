@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory
+coverage/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build output
+dist/
+build/
+
+# Certificates and keys (keep .gitkeep)
+certs/*.pem
+certs/*.key
+!certs/.gitkeep
+
+# Signed documents storage
+storage/signed/*.pdf
+!storage/signed/.gitkeep
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+data/
+
+# Test artifacts
+.jest/
