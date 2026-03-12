@@ -5,32 +5,30 @@ const db = require('./client');
 const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
 
 /**
- * Run all pending database migrations
+ * Run all pending database migrations (Supabase)
  */
 async function run() {
-  // Get database URL from environment or config
+  // Get Supabase config from environment
   require('dotenv').config();
-  const databaseUrl = process.env.DATABASE_URL || 'file:./data/app.db';
 
-  // Initialize database
-  await db.initialize(databaseUrl);
+  // Initialize Supabase database
+  await db.initialize({
+    url: process.env.SUPABASE_URL,
+    serviceRoleKey: process.env.SUPABASE_SERVICE_ROLE_KEY
+  });
 
   console.log('Running database migrations...');
 
   // Create migrations tracking table
   const createMigrationsTable = `
     CREATE TABLE IF NOT EXISTS _migrations (
-      id INTEGER PRIMARY KEY,
+      id SERIAL PRIMARY KEY,
       name TEXT NOT NULL UNIQUE,
       applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `;
 
-  if (db.usingSQLite()) {
-    db.getDb().exec(createMigrationsTable);
-  } else {
-    await db.run(createMigrationsTable);
-  }
+  await db.run(createMigrationsTable);
 
   // Get list of applied migrations
   const applied = await db.query('SELECT name FROM _migrations ORDER BY name');
@@ -53,13 +51,7 @@ async function run() {
     const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf-8');
 
     try {
-      if (db.usingSQLite()) {
-        // SQLite: execute all statements
-        db.getDb().exec(sql);
-      } else {
-        // PostgreSQL: execute the SQL
-        await db.run(sql);
-      }
+      await db.run(sql);
 
       // Record migration as applied
       await db.run(

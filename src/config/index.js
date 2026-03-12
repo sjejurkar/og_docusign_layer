@@ -108,9 +108,6 @@ try {
   throw error;
 }
 
-// Using Supabase client (not SQLite)
-config.isSQLite = false;
-
 // Compute base URL for the application (used in email links)
 config.baseUrl = process.env.BASE_URL || `http://localhost:${config.port}`;
 

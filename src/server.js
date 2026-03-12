@@ -39,19 +39,12 @@ async function start() {
     // Ensure storage directories exist
     ensureDirectories();
 
-    // Initialize database connection
-    if (config.isSQLite) {
-      logger.info('Initializing SQLite database...');
-      await db.initialize({ type: 'sqlite', url: config.databaseUrl });
-      await runMigrations();
-    } else {
-      logger.info('Initializing Supabase database...');
-      await db.initialize({
-        type: 'supabase',
-        url: config.supabase.url,
-        serviceRoleKey: config.supabase.serviceRoleKey
-      });
-    }
+    // Initialize Supabase database connection
+    logger.info('Initializing Supabase database...');
+    await db.initialize({
+      url: config.supabase.url,
+      serviceRoleKey: config.supabase.serviceRoleKey
+    });
 
     // Create Express app
     const app = createApp(config);
@@ -68,7 +61,7 @@ async function start() {
       logger.info({
         port: config.port,
         nodeEnv: config.nodeEnv,
-        database: config.isSQLite ? 'SQLite' : 'PostgreSQL'
+        database: 'Supabase'
       }, 'Server started successfully');
 
       logger.info(`Health check: http://localhost:${config.port}/health`);
@@ -91,13 +84,8 @@ async function start() {
 function ensureDirectories() {
   const dirs = [config.signedDocsPath];
 
-  // Only add database directory for SQLite
-  if (config.isSQLite && config.databaseUrl) {
-    dirs.push(path.dirname(config.databaseUrl.replace('file:', '')));
-  }
-
   for (const dir of dirs) {
-    if (dir && !dir.includes(':')) {
+    if (dir) {
       const resolvedDir = path.isAbsolute(dir)
         ? dir
         : path.resolve(process.cwd(), dir);

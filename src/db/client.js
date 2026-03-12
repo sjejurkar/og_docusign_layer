@@ -1,56 +1,22 @@
-const path = require('path');
-const fs = require('fs');
-
-let db = null;
 let supabase = null;
-let isSQLite = false;
 
 /**
- * Initialize database connection
- * Supports SQLite (dev) and Supabase (prod)
+ * Initialize database connection (Supabase only)
  */
 async function initialize(config) {
-  if (db || supabase) return db || supabase;
+  if (supabase) return supabase;
 
-  if (config.type === 'sqlite') {
-    isSQLite = true;
-    const Database = require('better-sqlite3');
+  const { createClient } = require('@supabase/supabase-js');
+  supabase = createClient(config.url, config.serviceRoleKey, {
+    auth: { persistSession: false }
+  });
 
-    let dbPath = config.url || ':memory:';
-    if (dbPath.startsWith('file:')) {
-      dbPath = dbPath.replace('file:', '');
-    }
-
-    if (dbPath === ':memory:' || dbPath === '') {
-      db = new Database(':memory:');
-    } else {
-      if (!path.isAbsolute(dbPath)) {
-        dbPath = path.resolve(process.cwd(), dbPath);
-      }
-      const dbDir = path.dirname(dbPath);
-      if (!fs.existsSync(dbDir)) {
-        fs.mkdirSync(dbDir, { recursive: true });
-      }
-      db = new Database(dbPath);
-      db.pragma('journal_mode = WAL');
-    }
-    db.pragma('foreign_keys = ON');
-    return db;
-
-  } else if (config.type === 'supabase') {
-    const { createClient } = require('@supabase/supabase-js');
-    supabase = createClient(config.url, config.serviceRoleKey, {
-      auth: { persistSession: false }
-    });
-    // Test connection
-    const { error } = await supabase.from('envelopes').select('id').limit(1);
-    if (error && !error.message.includes('0 rows')) {
-      throw new Error(`Supabase connection failed: ${error.message}`);
-    }
-    return supabase;
+  // Test connection
+  const { error } = await supabase.from('envelopes').select('id').limit(1);
+  if (error && !error.message.includes('0 rows')) {
+    throw new Error(`Supabase connection failed: ${error.message}`);
   }
-
-  throw new Error('Invalid database configuration');
+  return supabase;
 }
 
 /**
@@ -266,43 +232,25 @@ async function handleCount(sql, params) {
  * Execute a query that returns rows (SELECT)
  */
 async function query(sql, params = []) {
-  if (!db && !supabase) throw new Error('Database not initialized');
-
-  if (isSQLite) {
-    const stmt = db.prepare(sql);
-    return stmt.all(...params);
-  } else {
-    return executeSupabaseQuery(sql, params);
-  }
+  if (!supabase) throw new Error('Database not initialized');
+  return executeSupabaseQuery(sql, params);
 }
 
 /**
  * Execute a query that modifies data (INSERT, UPDATE, DELETE)
  */
 async function run(sql, params = []) {
-  if (!db && !supabase) throw new Error('Database not initialized');
-
-  if (isSQLite) {
-    const stmt = db.prepare(sql);
-    return stmt.run(...params);
-  } else {
-    return executeSupabaseQuery(sql, params);
-  }
+  if (!supabase) throw new Error('Database not initialized');
+  return executeSupabaseQuery(sql, params);
 }
 
 /**
  * Get a single row
  */
 async function getOne(sql, params = []) {
-  if (!db && !supabase) throw new Error('Database not initialized');
-
-  if (isSQLite) {
-    const stmt = db.prepare(sql);
-    return stmt.get(...params);
-  } else {
-    const results = await executeSupabaseQuery(sql, params);
-    return results[0] || null;
-  }
+  if (!supabase) throw new Error('Database not initialized');
+  const results = await executeSupabaseQuery(sql, params);
+  return results[0] || null;
 }
 
 /**
@@ -316,25 +264,14 @@ async function getMany(sql, params = []) {
  * Close database connection
  */
 async function close() {
-  if (db) {
-    db.close();
-    db = null;
-  }
   supabase = null;
 }
 
 /**
- * Get raw database instance (for migrations)
+ * Get raw database instance
  */
 function getDb() {
-  return db || supabase;
-}
-
-/**
- * Check if using SQLite
- */
-function usingSQLite() {
-  return isSQLite;
+  return supabase;
 }
 
 module.exports = {
@@ -344,6 +281,5 @@ module.exports = {
   getOne,
   getMany,
   close,
-  getDb,
-  usingSQLite
+  getDb
 };

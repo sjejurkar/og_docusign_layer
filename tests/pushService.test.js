@@ -266,7 +266,7 @@ describe('PushService', () => {
     test('returns reachable false for network errors', async () => {
       nock('https://api.example.com')
         .head('/v1/transfers/')
-        .replyWithError({ code: 'ENOTFOUND' });
+        .replyWithError({ code: 'ENOTFOUND', message: 'getaddrinfo ENOTFOUND' });
 
       const result = await pushService.testConnection();
 

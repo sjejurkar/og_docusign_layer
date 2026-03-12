@@ -5,8 +5,94 @@ const crypto = require('crypto');
 process.env.NODE_ENV = 'test';
 process.env.API_KEY = 'test-api-key-1234567890';
 process.env.DOCUSIGN_HMAC_KEY = 'test-hmac-key-1234567890';
-process.env.DATABASE_URL = 'file::memory:';
 process.env.LOG_LEVEL = 'error';
+
+// In-memory store for test data
+const testStore = {
+  envelopes: [],
+  events: [],
+  errors: []
+};
+
+// Mock database client
+jest.mock('../src/db/client', () => ({
+  initialize: jest.fn().mockResolvedValue({}),
+  close: jest.fn().mockResolvedValue(undefined),
+  getDb: jest.fn().mockReturnValue({}),
+  query: jest.fn().mockImplementation(async (sql, params = []) => {
+    const sqlLower = sql.toLowerCase();
+    if (sqlLower.includes('from envelopes')) {
+      if (sqlLower.includes('where id')) {
+        return testStore.envelopes.filter(e => e.id === params[0]);
+      }
+      if (sqlLower.includes('where status')) {
+        return testStore.envelopes.filter(e => e.status === params[0]);
+      }
+      if (sqlLower.includes('where idempotency_key')) {
+        return testStore.envelopes.filter(e => e.idempotency_key === params[0]);
+      }
+      if (sqlLower.includes('count(*)')) {
+        return [{ count: testStore.envelopes.length }];
+      }
+      return testStore.envelopes;
+    }
+    if (sqlLower.includes('from events')) {
+      if (sqlLower.includes('where job_id')) {
+        return testStore.events.filter(e => e.job_id === params[0]);
+      }
+      return testStore.events;
+    }
+    return [];
+  }),
+  run: jest.fn().mockImplementation(async (sql, params = []) => {
+    const sqlLower = sql.toLowerCase();
+    if (sqlLower.includes('insert into envelopes')) {
+      const envelope = {
+        id: params[0],
+        envelope_id: params[1],
+        status: params[2],
+        customer_name: params[3],
+        customer_email: params[4],
+        request_payload: params[5],
+        callback_url: params[6] || null,
+        idempotency_key: params[7] || null
+      };
+      testStore.envelopes.push(envelope);
+      return { changes: 1 };
+    }
+    if (sqlLower.includes('insert into events')) {
+      testStore.events.push({
+        id: params[0],
+        job_id: params[1],
+        event_type: params[2],
+        payload: params[3]
+      });
+      return { changes: 1 };
+    }
+    return { changes: 0 };
+  }),
+  getOne: jest.fn().mockImplementation(async (sql, params = []) => {
+    const sqlLower = sql.toLowerCase();
+    if (sqlLower.includes('from envelopes')) {
+      // Check idempotency_key BEFORE checking id (since 'where id' matches 'envelope_id')
+      if (sqlLower.includes('idempotency_key')) {
+        const found = testStore.envelopes.find(e => e.idempotency_key === params[0]);
+        return found || null;
+      }
+      if (sqlLower.includes('where id =')) {
+        return testStore.envelopes.find(e => e.id === params[0]) || null;
+      }
+    }
+    return null;
+  }),
+  getMany: jest.fn().mockImplementation(async (sql, params = []) => {
+    const sqlLower = sql.toLowerCase();
+    if (sqlLower.includes('from events') && sqlLower.includes('where job_id')) {
+      return testStore.events.filter(e => e.job_id === params[0]);
+    }
+    return [];
+  })
+}));
 
 // Mock external services
 jest.mock('../src/services/docusignService', () => ({
@@ -64,71 +150,27 @@ jest.mock('../src/config', () => ({
   },
   alert: { email: 'test@example.com' },
   smtp: { host: 'smtp.test.com', port: 587, user: 'test', pass: 'test' },
-  supabase: { url: 'https://test.supabase.co', anonKey: 'test-key' },
+  supabase: { url: 'https://test.supabase.co', anonKey: 'test-key', serviceRoleKey: 'test-service-key' },
   logLevel: 'error',
   signedDocsPath: '/tmp/test-signed',
-  isSQLite: true,
   baseUrl: 'http://localhost:3000'
 }));
 
 const createApp = require('../src/app');
-const db = require('../src/db/client');
 
 describe('API Integration Tests', () => {
   let app;
 
   beforeAll(async () => {
-    // Initialize in-memory database
-    await db.initialize('file::memory:');
-
-    // Create tables
-    const tables = `
-      CREATE TABLE IF NOT EXISTS envelopes (
-        id TEXT PRIMARY KEY,
-        envelope_id TEXT,
-        status TEXT NOT NULL DEFAULT 'PENDING',
-        customer_name TEXT NOT NULL,
-        customer_email TEXT NOT NULL,
-        request_payload TEXT NOT NULL,
-        extracted_data TEXT,
-        document_path TEXT,
-        callback_url TEXT,
-        idempotency_key TEXT UNIQUE,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS events (
-        id TEXT PRIMARY KEY,
-        job_id TEXT NOT NULL,
-        event_type TEXT NOT NULL,
-        payload TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE TABLE IF NOT EXISTS errors (
-        id TEXT PRIMARY KEY,
-        job_id TEXT,
-        error_type TEXT NOT NULL,
-        message TEXT NOT NULL,
-        stack_trace TEXT,
-        alert_sent INTEGER DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `;
-    db.getDb().exec(tables);
-
     const config = require('../src/config');
     app = createApp(config);
   });
 
-  afterAll(async () => {
-    await db.close();
-  });
-
   beforeEach(async () => {
-    // Clear tables before each test
-    db.getDb().exec('DELETE FROM errors');
-    db.getDb().exec('DELETE FROM events');
-    db.getDb().exec('DELETE FROM envelopes');
+    // Clear test store before each test
+    testStore.envelopes = [];
+    testStore.events = [];
+    testStore.errors = [];
   });
 
   describe('GET /health', () => {
@@ -314,12 +356,15 @@ describe('API Integration Tests', () => {
     });
 
     test('filters by status', async () => {
-      // Create a test envelope
-      await db.run(
-        `INSERT INTO envelopes (id, envelope_id, status, customer_name, customer_email, request_payload)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        ['job-1', 'env-1', 'COMPLETED', 'Test User', 'test@example.com', '{}']
-      );
+      // Add test data to store
+      testStore.envelopes.push({
+        id: 'job-1',
+        envelope_id: 'env-1',
+        status: 'COMPLETED',
+        customer_name: 'Test User',
+        customer_email: 'test@example.com',
+        request_payload: '{}'
+      });
 
       const response = await request(app)
         .get('/api/v1/envelopes?status=COMPLETED')
@@ -341,17 +386,21 @@ describe('API Integration Tests', () => {
     });
 
     test('returns job details with events', async () => {
-      // Create test envelope and event
-      await db.run(
-        `INSERT INTO envelopes (id, envelope_id, status, customer_name, customer_email, request_payload)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        ['job-123', 'env-123', 'SENT', 'Test User', 'test@example.com', '{}']
-      );
-      await db.run(
-        `INSERT INTO events (id, job_id, event_type, payload)
-         VALUES (?, ?, ?, ?)`,
-        ['event-1', 'job-123', 'SUBMITTED', '{}']
-      );
+      // Add test data to store
+      testStore.envelopes.push({
+        id: 'job-123',
+        envelope_id: 'env-123',
+        status: 'SENT',
+        customer_name: 'Test User',
+        customer_email: 'test@example.com',
+        request_payload: '{}'
+      });
+      testStore.events.push({
+        id: 'event-1',
+        job_id: 'job-123',
+        event_type: 'SUBMITTED',
+        payload: '{}'
+      });
 
       const response = await request(app)
         .get('/api/v1/envelopes/job-123')
