@@ -17,9 +17,16 @@ jest.mock('../src/services/docusignService', () => ({
       ownerFirstName: 'John',
       ownerMiddleName: 'Robert',
       ownerLastName: 'Doe',
+      ownerNumber: 'OWN-12345',
       ownerPhone: '555-1234',
       ownerEmail: 'test@example.com',
-      ownerAddress: '123 Test St'
+      ownerAddress: '123 Test St',
+      assetNumber: 'ASSET-001',
+      assetName: 'Test Asset',
+      assetLocation: '456 Asset Lane',
+      transfereeFirstName: 'Jane',
+      transfereeMiddleName: 'Marie',
+      transfereeLastName: 'Smith'
     }),
     downloadSignedDocument: jest.fn().mockResolvedValue('/tmp/test.pdf')
   })
@@ -146,9 +153,20 @@ describe('API Integration Tests', () => {
         firstName: 'John',
         middleName: 'Robert',
         lastName: 'Doe',
+        ownerNumber: 'OWN-12345',
         phone: '555-123-4567',
         email: 'john.doe@example.com',
         address: '123 Main St, Springfield, IL 62701'
+      },
+      asset: {
+        assetNumber: 'ASSET-001',
+        assetName: 'Company Vehicle',
+        assetLocation: '456 Warehouse Dr, Chicago, IL 60601'
+      },
+      transferee: {
+        firstName: 'Jane',
+        middleName: 'Marie',
+        lastName: 'Smith'
       }
     };
 
@@ -183,7 +201,9 @@ describe('API Integration Tests', () => {
 
     test('returns 422 for invalid email', async () => {
       const invalidPayload = {
-        owner: { ...validPayload.owner, email: 'not-an-email' }
+        owner: { ...validPayload.owner, email: 'not-an-email' },
+        asset: validPayload.asset,
+        transferee: validPayload.transferee
       };
 
       const response = await request(app)
@@ -192,6 +212,54 @@ describe('API Integration Tests', () => {
         .send(invalidPayload);
 
       expect(response.status).toBe(422);
+    });
+
+    test('returns 422 for missing asset fields', async () => {
+      const payloadMissingAsset = {
+        owner: validPayload.owner,
+        transferee: validPayload.transferee
+      };
+
+      const response = await request(app)
+        .post('/api/v1/envelopes')
+        .set('x-api-key', 'test-api-key-1234567890')
+        .send(payloadMissingAsset);
+
+      expect(response.status).toBe(422);
+      expect(response.body.details.some(d => d.field.includes('asset'))).toBe(true);
+    });
+
+    test('returns 422 for missing transferee fields', async () => {
+      const payloadMissingTransferee = {
+        owner: validPayload.owner,
+        asset: validPayload.asset
+      };
+
+      const response = await request(app)
+        .post('/api/v1/envelopes')
+        .set('x-api-key', 'test-api-key-1234567890')
+        .send(payloadMissingTransferee);
+
+      expect(response.status).toBe(422);
+      expect(response.body.details.some(d => d.field.includes('transferee'))).toBe(true);
+    });
+
+    test('accepts optional transferee middleName', async () => {
+      const payloadNoMiddle = {
+        owner: validPayload.owner,
+        asset: validPayload.asset,
+        transferee: {
+          firstName: 'Jane',
+          lastName: 'Smith'
+        }
+      };
+
+      const response = await request(app)
+        .post('/api/v1/envelopes')
+        .set('x-api-key', 'test-api-key-1234567890')
+        .send(payloadNoMiddle);
+
+      expect(response.status).toBe(202);
     });
 
     test('creates envelope with valid payload', async () => {

@@ -32,9 +32,20 @@ const createEnvelopeSchema = z.object({
     firstName: z.string().min(1, 'Owner first name is required'),
     middleName: z.string().optional(),
     lastName: z.string().min(1, 'Owner last name is required'),
+    ownerNumber: z.string().optional(),
     phone: z.string().optional(),
     email: z.string().email('Valid owner email is required'),
     address: z.string().min(1, 'Owner address is required')
+  }),
+  asset: z.object({
+    assetNumber: z.string().min(1, 'Asset number is required'),
+    assetName: z.string().min(1, 'Asset name is required'),
+    assetLocation: z.string().min(1, 'Asset location is required')
+  }),
+  transferee: z.object({
+    firstName: z.string().min(1, 'Transferee first name is required'),
+    middleName: z.string().optional(),
+    lastName: z.string().min(1, 'Transferee last name is required')
   }),
   idempotencyKey: z.string().optional(),
   callbackUrl: z.string().url().optional()

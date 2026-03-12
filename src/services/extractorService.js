@@ -10,9 +10,20 @@ const extractedDataSchema = z.object({
     firstName: z.string().min(1, 'Owner first name is required'),
     middleName: z.string().nullable(),
     lastName: z.string().min(1, 'Owner last name is required'),
+    ownerNumber: z.string().nullable(),
     phone: z.string().nullable(),
     email: z.string().email('Owner email is required'),
     address: z.string().min(1, 'Owner address is required')
+  }),
+  asset: z.object({
+    assetNumber: z.string().min(1, 'Asset number is required'),
+    assetName: z.string().min(1, 'Asset name is required'),
+    assetLocation: z.string().min(1, 'Asset location is required')
+  }),
+  transferee: z.object({
+    firstName: z.string().min(1, 'Transferee first name is required'),
+    middleName: z.string().nullable(),
+    lastName: z.string().min(1, 'Transferee last name is required')
   }),
   documentUrl: z.string()
 });
@@ -22,9 +33,16 @@ const TAB_MAPPING = {
   ownerFirstName: 'owner.firstName',
   ownerMiddleName: 'owner.middleName',
   ownerLastName: 'owner.lastName',
+  ownerNumber: 'owner.ownerNumber',
   ownerPhone: 'owner.phone',
   ownerEmail: 'owner.email',
-  ownerAddress: 'owner.address'
+  ownerAddress: 'owner.address',
+  assetNumber: 'asset.assetNumber',
+  assetName: 'asset.assetName',
+  assetLocation: 'asset.assetLocation',
+  transfereeFirstName: 'transferee.firstName',
+  transfereeMiddleName: 'transferee.middleName',
+  transfereeLastName: 'transferee.lastName'
 };
 
 /**
@@ -53,9 +71,20 @@ function extractData(tabs, envelopeInfo) {
       firstName: tabs.ownerFirstName || '',
       middleName: tabs.ownerMiddleName || null,
       lastName: tabs.ownerLastName || '',
+      ownerNumber: tabs.ownerNumber || null,
       phone: tabs.ownerPhone || null,
       email: tabs.ownerEmail || '',
       address: tabs.ownerAddress || ''
+    },
+    asset: {
+      assetNumber: tabs.assetNumber || '',
+      assetName: tabs.assetName || '',
+      assetLocation: tabs.assetLocation || ''
+    },
+    transferee: {
+      firstName: tabs.transfereeFirstName || '',
+      middleName: tabs.transfereeMiddleName || null,
+      lastName: tabs.transfereeLastName || ''
     },
     documentUrl: `/api/v1/envelopes/${envelopeInfo.jobId}/document`
   };
@@ -64,8 +93,14 @@ function extractData(tabs, envelopeInfo) {
   if (extracted.owner.middleName === '') {
     extracted.owner.middleName = null;
   }
+  if (extracted.owner.ownerNumber === '') {
+    extracted.owner.ownerNumber = null;
+  }
   if (extracted.owner.phone === '') {
     extracted.owner.phone = null;
+  }
+  if (extracted.transferee.middleName === '') {
+    extracted.transferee.middleName = null;
   }
 
   // Validate extracted data
@@ -95,7 +130,12 @@ function validateTabs(tabs) {
     'ownerFirstName',
     'ownerLastName',
     'ownerEmail',
-    'ownerAddress'
+    'ownerAddress',
+    'assetNumber',
+    'assetName',
+    'assetLocation',
+    'transfereeFirstName',
+    'transfereeLastName'
   ];
 
   const missing = requiredTabs.filter(tab => !tabs[tab] || tabs[tab].trim() === '');

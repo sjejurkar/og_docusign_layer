@@ -90,9 +90,16 @@ class DocuSignService {
       { tabLabel: 'ownerFirstName', value: data.owner.firstName || '' },
       { tabLabel: 'ownerMiddleName', value: data.owner.middleName || '' },
       { tabLabel: 'ownerLastName', value: data.owner.lastName || '' },
+      { tabLabel: 'ownerNumber', value: data.owner.ownerNumber || '' },
       { tabLabel: 'ownerPhone', value: data.owner.phone || '' },
       { tabLabel: 'ownerEmail', value: data.owner.email || '' },
-      { tabLabel: 'ownerAddress', value: data.owner.address || '' }
+      { tabLabel: 'ownerAddress', value: data.owner.address || '' },
+      { tabLabel: 'assetNumber', value: data.asset.assetNumber || '' },
+      { tabLabel: 'assetName', value: data.asset.assetName || '' },
+      { tabLabel: 'assetLocation', value: data.asset.assetLocation || '' },
+      { tabLabel: 'transfereeFirstName', value: data.transferee.firstName || '' },
+      { tabLabel: 'transfereeMiddleName', value: data.transferee.middleName || '' },
+      { tabLabel: 'transfereeLastName', value: data.transferee.lastName || '' }
     ];
 
     // Create envelope definition

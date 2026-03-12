@@ -24,20 +24,24 @@ describe('PushService', () => {
     jobId: 'job-123-456-789',
     envelopeId: 'env-abc-def-ghi',
     signedAt: '2024-03-15T14:30:00.000Z',
-    customer: {
-      fullName: 'John Doe',
+    owner: {
+      firstName: 'John',
+      middleName: 'Robert',
+      lastName: 'Doe',
+      ownerNumber: 'OWN-12345',
+      phone: '555-1234',
       email: 'john@example.com',
-      phone: '555-1234'
+      address: '123 Main St'
     },
-    property: {
-      address: '123 Main St',
-      lotNumber: 'LOT-001',
-      titleReference: 'TITLE-001'
+    asset: {
+      assetNumber: 'ASSET-001',
+      assetName: 'Company Vehicle',
+      assetLocation: '456 Warehouse Dr'
     },
-    transfer: {
-      date: '2024-03-15',
-      considerationAmount: 350000,
-      transferorName: 'Jane Smith'
+    transferee: {
+      firstName: 'Jane',
+      middleName: 'Marie',
+      lastName: 'Smith'
     },
     documentUrl: '/api/v1/envelopes/job-123-456-789/document'
   };
@@ -201,8 +205,9 @@ describe('PushService', () => {
       await pushService.pushData(samplePayload);
 
       expect(capturedBody.jobId).toBe(samplePayload.jobId);
-      expect(capturedBody.customer.fullName).toBe(samplePayload.customer.fullName);
-      expect(capturedBody.transfer.considerationAmount).toBe(350000);
+      expect(capturedBody.owner.firstName).toBe(samplePayload.owner.firstName);
+      expect(capturedBody.asset.assetNumber).toBe(samplePayload.asset.assetNumber);
+      expect(capturedBody.transferee.firstName).toBe(samplePayload.transferee.firstName);
     });
 
     test('returns response data from downstream', async () => {
