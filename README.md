@@ -139,6 +139,7 @@ curl -X POST http://localhost:3000/api/v1/envelopes \
       "firstName": "John",
       "middleName": "Michael",
       "lastName": "Doe",
+      "ownerNumber": "OWN-12345",
       "email": "john.doe@example.com",
       "phone": "555-123-4567",
       "address": "123 Main St, Springfield, IL 62701"
@@ -163,6 +164,7 @@ curl -X POST http://localhost:3000/api/v1/envelopes \
 | `owner.firstName` | string | Yes | Owner's first name |
 | `owner.middleName` | string | No | Owner's middle name |
 | `owner.lastName` | string | Yes | Owner's last name |
+| `owner.ownerNumber` | string | No | Owner identifier/number |
 | `owner.phone` | string | No | Owner's phone number |
 | `owner.email` | string | Yes | Owner's email (valid format) |
 | `owner.address` | string | Yes | Owner's address |
@@ -271,6 +273,7 @@ Create a DocuSign template with these tab labels:
 | `ownerFirstName` | Text | Owner's first name |
 | `ownerMiddleName` | Text | Owner's middle name (optional) |
 | `ownerLastName` | Text | Owner's last name |
+| `ownerNumber` | Text | Owner identifier/number (optional) |
 | `ownerPhone` | Text | Owner's phone (optional) |
 | `ownerEmail` | Text | Owner's email |
 | `ownerAddress` | Text | Owner's address |
