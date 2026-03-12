@@ -26,12 +26,15 @@ class DocuSignService {
     this.log.info('Authenticating with DocuSign...');
 
     try {
-      // Read RSA private key
-      const privateKeyPath = this.config.docusign.privateKeyPath;
-      if (!fs.existsSync(privateKeyPath)) {
-        throw new Error(`DocuSign private key not found at: ${privateKeyPath}`);
+      // Get RSA private key from env var or file
+      let privateKey = this.config.docusign.privateKey;
+      if (!privateKey) {
+        const privateKeyPath = this.config.docusign.privateKeyPath;
+        if (!fs.existsSync(privateKeyPath)) {
+          throw new Error(`DocuSign private key not found at: ${privateKeyPath}`);
+        }
+        privateKey = fs.readFileSync(privateKeyPath, 'utf-8');
       }
-      const privateKey = fs.readFileSync(privateKeyPath, 'utf-8');
 
       // Determine OAuth base path
       const oAuthBasePath = this.config.docusign.baseUrl.includes('demo')

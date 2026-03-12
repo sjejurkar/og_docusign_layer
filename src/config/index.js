@@ -14,11 +14,15 @@ const configSchema = z.object({
     accountId: z.string().min(1, 'DOCUSIGN_ACCOUNT_ID is required'),
     clientId: z.string().min(1, 'DOCUSIGN_CLIENT_ID is required'),
     userId: z.string().min(1, 'DOCUSIGN_USER_ID is required'),
-    privateKeyPath: z.string().min(1, 'DOCUSIGN_PRIVATE_KEY_PATH is required'),
+    privateKeyPath: z.string().optional(),
+    privateKey: z.string().optional(),
     baseUrl: z.string().url('DOCUSIGN_BASE_URL must be a valid URL'),
     templateId: z.string().min(1, 'DOCUSIGN_TEMPLATE_ID is required'),
     hmacKey: z.string().min(10, 'DOCUSIGN_HMAC_KEY must be at least 10 characters')
-  }),
+  }).refine(
+    data => data.privateKey || data.privateKeyPath,
+    { message: 'Either DOCUSIGN_PRIVATE_KEY or DOCUSIGN_PRIVATE_KEY_PATH is required' }
+  ),
 
   downstream: z.object({
     apiUrl: z.string().url('DOWNSTREAM_API_URL must be a valid URL'),
@@ -56,6 +60,7 @@ const rawConfig = {
     clientId: process.env.DOCUSIGN_CLIENT_ID,
     userId: process.env.DOCUSIGN_USER_ID,
     privateKeyPath: process.env.DOCUSIGN_PRIVATE_KEY_PATH,
+    privateKey: process.env.DOCUSIGN_PRIVATE_KEY,
     baseUrl: process.env.DOCUSIGN_BASE_URL,
     templateId: process.env.DOCUSIGN_TEMPLATE_ID,
     hmacKey: process.env.DOCUSIGN_HMAC_KEY
@@ -92,7 +97,7 @@ try {
   config = configSchema.parse(rawConfig);
 
   // Resolve relative paths to absolute
-  if (!path.isAbsolute(config.docusign.privateKeyPath)) {
+  if (config.docusign.privateKeyPath && !path.isAbsolute(config.docusign.privateKeyPath)) {
     config.docusign.privateKeyPath = path.resolve(process.cwd(), config.docusign.privateKeyPath);
   }
   if (!path.isAbsolute(config.signedDocsPath)) {
