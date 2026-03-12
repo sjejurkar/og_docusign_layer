@@ -28,7 +28,8 @@ This is a Node.js/Express integration layer between internal workflows and DocuS
 
 | Layer | File | Responsibility |
 |-------|------|----------------|
-| Entry | `src/server.js` | Server bootstrap, graceful shutdown |
+| Entry | `src/server.js` | Server bootstrap, graceful shutdown (traditional hosting) |
+| Entry | `api/index.js` | Serverless entry point (Vercel) |
 | App | `src/app.js` | Express factory, middleware chain, error handling |
 | Config | `src/config/index.js` | Environment variable loading and validation |
 | Routes | `src/routes/envelopes.js` | Envelope CRUD, document download, retry |
@@ -74,6 +75,8 @@ Test files go in `tests/` directory with `.test.js` suffix.
 ## Environment Setup
 
 Copy `.env.example` to `.env` and configure. Required external services:
-- DocuSign Developer Account (sandbox) with RSA key at `certs/docusign.pem`
+- DocuSign Developer Account (sandbox) with RSA key:
+  - Local: `DOCUSIGN_PRIVATE_KEY_PATH=./certs/docusign.pem`
+  - Serverless/Vercel: `DOCUSIGN_PRIVATE_KEY=<key content>`
 - Supabase PostgreSQL (connection string in `DATABASE_URL`)
 - SMTP server for alerts

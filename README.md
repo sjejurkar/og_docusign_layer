@@ -355,7 +355,8 @@ docusign-layer/
 | `DOCUSIGN_ACCOUNT_ID` | Yes | DocuSign account GUID |
 | `DOCUSIGN_CLIENT_ID` | Yes | DocuSign Integration Key |
 | `DOCUSIGN_USER_ID` | Yes | DocuSign user GUID |
-| `DOCUSIGN_PRIVATE_KEY_PATH` | Yes | Path to RSA private key |
+| `DOCUSIGN_PRIVATE_KEY_PATH` | * | Path to RSA private key (for local/traditional hosting) |
+| `DOCUSIGN_PRIVATE_KEY` | * | RSA private key content (for serverless/Vercel) |
 | `DOCUSIGN_BASE_URL` | Yes | DocuSign API base URL |
 | `DOCUSIGN_TEMPLATE_ID` | Yes | Template GUID |
 | `DOCUSIGN_HMAC_KEY` | Yes | HMAC secret for webhooks |
@@ -369,6 +370,8 @@ docusign-layer/
 | `DATABASE_URL` | Yes | Supabase PostgreSQL connection string |
 | `LOG_LEVEL` | No | Logging level (default: info) |
 | `SIGNED_DOCS_PATH` | No | Signed PDF storage path |
+
+\* One of `DOCUSIGN_PRIVATE_KEY_PATH` or `DOCUSIGN_PRIVATE_KEY` is required.
 
 ## Production Deployment
 
@@ -396,6 +399,18 @@ COPY . .
 EXPOSE 3000
 CMD ["node", "src/server.js"]
 ```
+
+### Vercel
+
+The application includes a serverless entry point for Vercel deployment:
+
+1. Connect your repository to Vercel
+2. Set environment variables in Vercel project settings:
+   - Use `DOCUSIGN_PRIVATE_KEY` instead of `DOCUSIGN_PRIVATE_KEY_PATH`
+   - Paste the full contents of your RSA private key (including BEGIN/END lines)
+3. Deploy
+
+**Note:** File-based storage (`SIGNED_DOCS_PATH`) won't work on Vercel. For production, consider using Supabase Storage for signed documents.
 
 ### Environment Variables for Production
 
