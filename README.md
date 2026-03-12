@@ -135,23 +135,43 @@ curl -X POST http://localhost:3000/api/v1/envelopes \
   -H "Content-Type: application/json" \
   -H "x-api-key: your-api-key" \
   -d '{
-    "customer": {
-      "fullName": "John Doe",
+    "owner": {
+      "firstName": "John",
+      "middleName": "Michael",
+      "lastName": "Doe",
       "email": "john.doe@example.com",
-      "phone": "555-123-4567"
+      "phone": "555-123-4567",
+      "address": "123 Main St, Springfield, IL 62701"
     },
-    "property": {
-      "address": "123 Main St, Springfield, IL 62701",
-      "lotNumber": "LOT-2024-001",
-      "titleReference": "TITLE-REF-12345"
+    "asset": {
+      "assetNumber": "ASSET-001",
+      "assetName": "Company Vehicle",
+      "assetLocation": "456 Warehouse Dr, Chicago, IL 60601"
     },
-    "transfer": {
-      "date": "2024-03-15",
-      "considerationAmount": 350000,
-      "transferorName": "Jane Smith"
+    "transferee": {
+      "firstName": "Jane",
+      "middleName": "Marie",
+      "lastName": "Smith"
     }
   }'
 ```
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `owner.firstName` | string | Yes | Owner's first name |
+| `owner.middleName` | string | No | Owner's middle name |
+| `owner.lastName` | string | Yes | Owner's last name |
+| `owner.phone` | string | No | Owner's phone number |
+| `owner.email` | string | Yes | Owner's email (valid format) |
+| `owner.address` | string | Yes | Owner's address |
+| `asset.assetNumber` | string | Yes | Asset identifier |
+| `asset.assetName` | string | Yes | Asset name/description |
+| `asset.assetLocation` | string | Yes | Asset location |
+| `transferee.firstName` | string | Yes | Transferee's first name |
+| `transferee.middleName` | string | No | Transferee's middle name |
+| `transferee.lastName` | string | Yes | Transferee's last name |
 
 **Response:**
 
@@ -248,15 +268,18 @@ Create a DocuSign template with these tab labels:
 
 | Tab Label | Type | Description |
 |-----------|------|-------------|
-| `customer_full_name` | Text | Customer's full name |
-| `customer_email` | Text | Customer's email |
-| `customer_phone` | Text | Customer's phone |
-| `property_address` | Text | Property address |
-| `property_lot_number` | Text | Lot number |
-| `property_title_reference` | Text | Title reference |
-| `transfer_date` | Date | Transfer date |
-| `transfer_consideration_amount` | Number | Consideration amount |
-| `transfer_transferor_name` | Text | Transferor name |
+| `ownerFirstName` | Text | Owner's first name |
+| `ownerMiddleName` | Text | Owner's middle name (optional) |
+| `ownerLastName` | Text | Owner's last name |
+| `ownerPhone` | Text | Owner's phone (optional) |
+| `ownerEmail` | Text | Owner's email |
+| `ownerAddress` | Text | Owner's address |
+| `assetNumber` | Text | Asset identifier |
+| `assetName` | Text | Asset name/description |
+| `assetLocation` | Text | Asset location |
+| `transfereeFirstName` | Text | Transferee's first name |
+| `transfereeMiddleName` | Text | Transferee's middle name (optional) |
+| `transfereeLastName` | Text | Transferee's last name |
 
 ### 4. Configure Connect (Webhooks)
 

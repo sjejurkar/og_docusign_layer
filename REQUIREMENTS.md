@@ -91,7 +91,7 @@ Internal workflows call this service to send a document to DocuSign. The service
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| FR-SUB-01 | The API MUST accept a JSON payload containing: customer full name, email address, phone number, associated property details (address, lot number, title reference), and ownership transfer details (transfer date, consideration amount, transferor name). | MUST |
+| FR-SUB-01 | The API MUST accept a JSON payload containing: owner information (first name, middle name (optional), last name, email, phone (optional), address), asset information (asset number, asset name, asset location), and transferee information (first name, middle name (optional), last name). | MUST |
 | FR-SUB-02 | The API MUST resolve the correct DocuSign Template ID from configuration (`DOCUSIGN_TEMPLATE_ID` env var) and create an envelope from that template. | MUST |
 | FR-SUB-03 | The API MUST map all supplied fields to the corresponding DocuSign template tabs prior to sending. | MUST |
 | FR-SUB-04 | The API MUST send the envelope in `sent` status so the customer receives the signing invitation email immediately. | MUST |
@@ -122,7 +122,7 @@ Once an envelope is marked completed the service retrieves the signed document d
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | FR-EXT-01 | The service MUST call the DocuSign API to retrieve all tab values from the completed envelope. | MUST |
-| FR-EXT-02 | The service MUST map the following fields: customer full name, customer email, customer phone, property address, lot number, title reference, transfer date, consideration amount, transferor name, signing completion timestamp, envelope ID. | MUST |
+| FR-EXT-02 | The service MUST map the following fields: owner first name, middle name, last name, email, phone, address, signing completion timestamp, envelope ID. | MUST |
 | FR-EXT-03 | The service MUST download the signed PDF and store a reference (local path or object storage key) in the event store. | MUST |
 | FR-EXT-04 | The service MUST validate that all mandatory fields are populated in the extracted data before proceeding to the downstream push; if any are missing it MUST log an error and send an alert. | MUST |
 | FR-EXT-05 | The service SHOULD make the signed PDF available for download via an authenticated GET endpoint. | SHOULD |
@@ -192,20 +192,23 @@ The webhook endpoint additionally validates the DocuSign HMAC-SHA256 signature v
 
 ```json
 {
-  "customer": {
-    "fullName": "string (required)",
+  "owner": {
+    "firstName": "string (required)",
+    "middleName": "string (optional)",
+    "lastName": "string (required)",
     "email": "string (required)",
-    "phone": "string (optional)"
+    "phone": "string (optional)",
+    "address": "string (required)"
   },
-  "property": {
-    "address": "string (required)",
-    "lotNumber": "string (required)",
-    "titleReference": "string (required)"
+  "asset": {
+    "assetNumber": "string (required)",
+    "assetName": "string (required)",
+    "assetLocation": "string (required)"
   },
-  "transfer": {
-    "date": "ISO 8601 date (required)",
-    "considerationAmount": "number (required)",
-    "transferorName": "string (required)"
+  "transferee": {
+    "firstName": "string (required)",
+    "middleName": "string (optional)",
+    "lastName": "string (required)"
   },
   "idempotencyKey": "string (optional)",
   "callbackUrl": "string (optional)"
@@ -231,20 +234,23 @@ This structure is POSTed to the downstream REST API after successful data extrac
   "jobId": "uuid-v4",
   "envelopeId": "docusign-envelope-id",
   "signedAt": "ISO-8601 timestamp",
-  "customer": {
-    "fullName": "string",
+  "owner": {
+    "firstName": "string",
+    "middleName": "string | null",
+    "lastName": "string",
+    "phone": "string | null",
     "email": "string",
-    "phone": "string | null"
+    "address": "string"
   },
-  "property": {
-    "address": "string",
-    "lotNumber": "string",
-    "titleReference": "string"
+  "asset": {
+    "assetNumber": "string",
+    "assetName": "string",
+    "assetLocation": "string"
   },
-  "transfer": {
-    "date": "ISO-8601 date",
-    "considerationAmount": 0.00,
-    "transferorName": "string"
+  "transferee": {
+    "firstName": "string",
+    "middleName": "string | null",
+    "lastName": "string"
   },
   "documentUrl": "/api/v1/envelopes/{jobId}/document"
 }
@@ -256,15 +262,18 @@ The following tab labels must exist in the DocuSign template and map to request 
 
 | Tab Label (DocuSign) | Source Field |
 |----------------------|-------------|
-| `customer_full_name` | `customer.fullName` |
-| `customer_email` | `customer.email` |
-| `customer_phone` | `customer.phone` |
-| `property_address` | `property.address` |
-| `property_lot_number` | `property.lotNumber` |
-| `property_title_reference` | `property.titleReference` |
-| `transfer_date` | `transfer.date` |
-| `transfer_consideration_amount` | `transfer.considerationAmount` |
-| `transfer_transferor_name` | `transfer.transferorName` |
+| `ownerFirstName` | `owner.firstName` |
+| `ownerMiddleName` | `owner.middleName` |
+| `ownerLastName` | `owner.lastName` |
+| `ownerPhone` | `owner.phone` |
+| `ownerEmail` | `owner.email` |
+| `ownerAddress` | `owner.address` |
+| `assetNumber` | `asset.assetNumber` |
+| `assetName` | `asset.assetName` |
+| `assetLocation` | `asset.assetLocation` |
+| `transfereeFirstName` | `transferee.firstName` |
+| `transfereeMiddleName` | `transferee.middleName` |
+| `transfereeLastName` | `transferee.lastName` |
 
 ---
 
