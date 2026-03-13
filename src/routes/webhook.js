@@ -55,8 +55,11 @@ router.post('/docusign', hmacValidator, async (req, res) => {
         payload = req.body;
       }
 
-      const envelopeId = payload.envelopeId || payload.EnvelopeID;
-      const status = (payload.status || payload.Status || '').toLowerCase();
+      // Handle both legacy format (top-level) and new Connect format (nested in data)
+      const envelopeId = payload.envelopeId || payload.EnvelopeID ||
+                         payload.data?.envelopeId || payload.data?.EnvelopeID;
+      const status = (payload.status || payload.Status ||
+                      payload.data?.envelopeSummary?.status || '').toLowerCase();
 
       log.info({ envelopeId, status }, 'Processing webhook event');
 
