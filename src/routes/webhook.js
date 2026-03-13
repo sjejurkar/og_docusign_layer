@@ -35,93 +35,92 @@ function getServices() {
 router.post('/docusign', hmacValidator, async (req, res) => {
   const log = logger.child({ webhook: 'docusign' });
 
-  // Acknowledge immediately (must respond within 10 seconds)
-  res.status(200).json({ received: true });
+  try {
+    // Parse payload (JSON or XML)
+    let payload;
+    const contentType = req.headers['content-type'] || '';
 
-  // Process asynchronously
-  setImmediate(async () => {
-    try {
-      // Parse payload (JSON or XML)
-      let payload;
-      const contentType = req.headers['content-type'] || '';
-
-      if (contentType.includes('xml')) {
-        // Parse XML payload
-        const xmlString = typeof req.body === 'string' ? req.body : req.rawBody.toString();
-        const parsed = await parseStringPromise(xmlString, { explicitArray: false });
-        payload = normalizeXmlPayload(parsed);
-      } else {
-        // JSON payload
-        payload = req.body;
-      }
-
-      // Handle both legacy format (top-level) and new Connect format (nested in data)
-      const envelopeId = payload.envelopeId || payload.EnvelopeID ||
-                         payload.data?.envelopeId || payload.data?.EnvelopeID;
-      const status = (payload.status || payload.Status ||
-                      payload.data?.envelopeSummary?.status || '').toLowerCase();
-
-      log.info({ envelopeId, status }, 'Processing webhook event');
-
-      if (!envelopeId) {
-        log.warn('Webhook payload missing envelope ID');
-        return;
-      }
-
-      // Find job by envelope ID
-      const job = await db.getOne(
-        'SELECT * FROM envelopes WHERE envelope_id = ?',
-        [envelopeId]
-      );
-
-      if (!job) {
-        log.warn({ envelopeId }, 'Received webhook for unknown envelope');
-        return;
-      }
-
-      const jobLog = log.child({ jobId: job.id, envelopeId });
-
-      // Check for duplicate event (idempotency)
-      const statusUpper = status.toUpperCase();
-      const existingEvent = await db.getOne(
-        'SELECT id FROM events WHERE job_id = ? AND event_type = ?',
-        [job.id, statusUpper]
-      );
-
-      if (existingEvent) {
-        jobLog.info({ status: statusUpper }, 'Duplicate webhook event, skipping');
-        return;
-      }
-
-      // Record event
-      await db.run(`
-        INSERT INTO events (id, job_id, event_type, payload, created_at)
-        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
-      `, [uuidv4(), job.id, statusUpper, JSON.stringify(payload)]);
-
-      // Update envelope status
-      await db.run(
-        'UPDATE envelopes SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-        [statusUpper, job.id]
-      );
-
-      jobLog.info({ status: statusUpper }, 'Envelope status updated');
-
-      // If completed, trigger extraction and push
-      if (status === 'completed') {
-        await processCompletedEnvelope(job, jobLog);
-      }
-    } catch (error) {
-      log.error({ error: error.message, stack: error.stack }, 'Webhook processing error');
-
-      // Log error to database
-      try {
-        await logError(error, 'WEBHOOK_PROCESSING', null, null);
-      } catch (dbError) {
-        log.error({ error: dbError.message }, 'Failed to log webhook error');
-      }
+    if (contentType.includes('xml')) {
+      // Parse XML payload
+      const xmlString = typeof req.body === 'string' ? req.body : req.rawBody.toString();
+      const parsed = await parseStringPromise(xmlString, { explicitArray: false });
+      payload = normalizeXmlPayload(parsed);
+    } else {
+      // JSON payload
+      payload = req.body;
     }
-  });
+
+    // Handle both legacy format (top-level) and new Connect format (nested in data)
+    const envelopeId = payload.envelopeId || payload.EnvelopeID ||
+                       payload.data?.envelopeId || payload.data?.EnvelopeID;
+    const status = (payload.status || payload.Status ||
+                    payload.data?.envelopeSummary?.status || '').toLowerCase();
+
+    log.info({ envelopeId, status }, 'Processing webhook event');
+
+    if (!envelopeId) {
+      log.warn('Webhook payload missing envelope ID');
+      return res.status(200).json({ received: true, processed: false, reason: 'missing_envelope_id' });
+    }
+
+    // Find job by envelope ID
+    const job = await db.getOne(
+      'SELECT * FROM envelopes WHERE envelope_id = ?',
+      [envelopeId]
+    );
+
+    if (!job) {
+      log.warn({ envelopeId }, 'Received webhook for unknown envelope');
+      return res.status(200).json({ received: true, processed: false, reason: 'unknown_envelope' });
+    }
+
+    const jobLog = log.child({ jobId: job.id, envelopeId });
+
+    // Check for duplicate event (idempotency)
+    const statusUpper = status.toUpperCase();
+    const existingEvent = await db.getOne(
+      'SELECT id FROM events WHERE job_id = ? AND event_type = ?',
+      [job.id, statusUpper]
+    );
+
+    if (existingEvent) {
+      jobLog.info({ status: statusUpper }, 'Duplicate webhook event, skipping');
+      return res.status(200).json({ received: true, processed: false, reason: 'duplicate' });
+    }
+
+    // Record event
+    await db.run(`
+      INSERT INTO events (id, job_id, event_type, payload, created_at)
+      VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `, [uuidv4(), job.id, statusUpper, JSON.stringify(payload)]);
+
+    // Update envelope status
+    await db.run(
+      'UPDATE envelopes SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [statusUpper, job.id]
+    );
+
+    jobLog.info({ status: statusUpper }, 'Envelope status updated');
+
+    // If completed, trigger extraction and push
+    if (status === 'completed') {
+      await processCompletedEnvelope(job, jobLog);
+    }
+
+    return res.status(200).json({ received: true, processed: true });
+  } catch (error) {
+    log.error({ error: error.message, stack: error.stack }, 'Webhook processing error');
+
+    // Log error to database
+    try {
+      await logError(error, 'WEBHOOK_PROCESSING', null, null);
+    } catch (dbError) {
+      log.error({ error: dbError.message }, 'Failed to log webhook error');
+    }
+
+    // Still return 200 to prevent DocuSign from retrying
+    return res.status(200).json({ received: true, processed: false, reason: 'error' });
+  }
 });
 
 /**
