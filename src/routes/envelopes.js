@@ -30,7 +30,7 @@ function getServices() {
 const createEnvelopeSchema = z.object({
   owner: z.object({
     firstName: z.string().min(1, 'Owner first name is required'),
-    middleName: z.string().optional(),
+    middleName: z.string().nullable().optional(),
     lastName: z.string().min(1, 'Owner last name is required'),
     ownerNumber: z.string().optional(),
     phone: z.string().optional(),
@@ -44,7 +44,7 @@ const createEnvelopeSchema = z.object({
   }),
   transferee: z.object({
     firstName: z.string().min(1, 'Transferee first name is required'),
-    middleName: z.string().optional(),
+    middleName: z.string().nullable().optional(),
     lastName: z.string().min(1, 'Transferee last name is required')
   }),
   idempotencyKey: z.string().optional(),

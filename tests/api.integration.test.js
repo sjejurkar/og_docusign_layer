@@ -304,6 +304,34 @@ describe('API Integration Tests', () => {
       expect(response.status).toBe(202);
     });
 
+    test('accepts null middleName for owner and transferee', async () => {
+      const payloadNullMiddle = {
+        owner: {
+          firstName: 'John',
+          middleName: null,
+          lastName: 'Doe',
+          ownerNumber: 'OWN-12345',
+          phone: '555-123-4567',
+          email: 'john.doe@example.com',
+          address: '123 Main St, Springfield, IL 62701'
+        },
+        asset: validPayload.asset,
+        transferee: {
+          firstName: 'Jane',
+          middleName: null,
+          lastName: 'Smith'
+        }
+      };
+
+      const response = await request(app)
+        .post('/api/v1/envelopes')
+        .set('x-api-key', 'test-api-key-1234567890')
+        .send(payloadNullMiddle);
+
+      expect(response.status).toBe(202);
+      expect(response.body.jobId).toBeDefined();
+    });
+
     test('creates envelope with valid payload', async () => {
       const response = await request(app)
         .post('/api/v1/envelopes')
